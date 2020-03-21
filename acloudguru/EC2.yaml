@@ -1,0 +1,132 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Create a stack named - AcloudGuruEC2 for Acloudguru practice
+Resources:
+  WebDMZInstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    #    DeletionPolicy:
+    Properties:
+      GroupDescription: WebDMZ
+      GroupName: WebDMZ
+      #      VpcId: vpc-0489ef7f   #Creating VPC For this EC2 instance
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-062f7200baf2fa504
+      InstanceType: t2.micro
+      InstanceInitiatedShutdownBehavior: stop
+      Tenancy: default
+      KeyName: ACloudGuru
+      SecurityGroups:
+        - !Ref WebDMZInstanceSecurityGroup
+      UserData:
+        Fn::Base64:
+          Fn::Join:
+            - ""
+            - - "#!/bin/bash \n"
+              - "yum update -y \n"
+              - "yum install httpd -y \n"
+              - "service httpd start \n"
+              - "chkconfig httpd on \n"
+              - "cd /var/www/html \n"
+              - "echo '<html><h1>Hello Cloud Gurus. Welcome to my web page</h1></html>' > index.html \n"
+              - "aws s3 mb s3://kjshgkrhjskljklwrjklsjfkljgklrjr4wdf \n"
+              - "aws s3 cp index.html s3://kjshgkrhjskljklwrjklsjfkljgklrjr4wdf\n"
+
+      Tags:
+        - Key: Name
+          Value: Webserver
+        - Key: Department
+          Value: Developers
+        - Key: EmployeeId
+          Value: bhagatv1
+
+  EC2IamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Description: Allow EC2 instance to call AWS Services on your behalf
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+      #        - arn:aws:iam::aws:policy/AdministratorAccess
+      RoleName: AdminAccess
+
+  MyInstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      Path: "/"
+      Roles:
+        - Ref: EC2IamRole
+      InstanceProfileName: "AdminAccess"
+#*************************Volume start***********************************
+#  SC1Volume:
+#    Type: AWS::EC2::Volume
+#    Properties:
+#      AvailabilityZone: !GetAtt EC2Instance.AvailabilityZone
+#      VolumeType: sc1
+#      Size: 500
+#
+#  SC1MountPoint:
+#    Type: AWS::EC2::VolumeAttachment
+#    Properties:
+#      InstanceId: !Ref EC2Instance
+#      VolumeId: !Ref SC1Volume
+#      Device: /dev/sdb
+#
+#  ST1Volume:
+#    Type: AWS::EC2::Volume
+#    Properties:
+#      AvailabilityZone: !GetAtt EC2Instance.AvailabilityZone
+#      VolumeType: st1
+#      Size: 1000
+#
+#  ST1MountPoint:
+#    Type: AWS::EC2::VolumeAttachment
+#    Properties:
+#      InstanceId: !Ref EC2Instance
+#      VolumeId: !Ref ST1Volume
+#      Device: /dev/sdc
+#
+#  StandardVolume:
+#    Type: AWS::EC2::Volume
+#    Properties:
+#      AvailabilityZone: !GetAtt EC2Instance.AvailabilityZone
+#      VolumeType: io1
+#      Iops: 100
+#      Size: 8
+#
+#  StandardMountPoint:
+#    Type: AWS::EC2::VolumeAttachment
+#    Properties:
+#      InstanceId: !Ref EC2Instance
+#      VolumeId: !Ref StandardVolume
+#      Device: /dev/sdd
+#*************************Volume end***********************************
+
+
+
+#  VPC:
+#    Type: AWS::EC2::VPC
+#    Properties:
+#      CidrBlock: 10.0.0.0/16
+#      EnableDnsHostnames: true
+#      Tags:
+#        - Key: Name
+#          Value: myVPC
