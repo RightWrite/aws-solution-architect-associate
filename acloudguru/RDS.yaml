@@ -1,0 +1,138 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Create a stack named - AcloudGuruRDS for Acloudguru practice
+Resources:
+  #  RDS:
+  #    Type: "AWS::RDS::DBInstance"
+  #    Properties:
+  #      DBInstanceIdentifier: acloudguru
+  #      DBName: acloudguru
+  #      DBInstanceClass: db.t2.micro
+  #      AllocatedStorage: 5
+  #      MasterUsername: acloudguru
+  #      MasterUserPassword: acloudguru
+  #      Engine: MySQL
+  #      EngineVersion: 5.7.22
+  #      VPCSecurityGroups:
+  #        - !Ref SecurityGroupDBInstance
+
+  #  SecurityGroupDBInstance:
+  #    Type: 'AWS::EC2::SecurityGroup'
+  #    Properties:
+  #      GroupDescription: 'Allow http to client host'
+  ##      GroupName: 'mysecgrp'
+  #      SecurityGroupIngress:
+  #        - IpProtocol: tcp
+  #          FromPort: 3306
+  #          ToPort: 3306
+  #          CidrIp: 0.0.0.0/0
+
+  #  SecurityGroupDBInstance:
+  #    Type: AWS::EC2::SecurityGroup
+  #    Properties:
+  #      GroupDescription: WebDMZ
+  #      GroupName: WebDMZ
+  #      SecurityGroupIngress:
+  #        - IpProtocol: tcp
+  #          CidrIp: 0.0.0.0/0
+  #          FromPort: 22
+  #          ToPort: 22
+  #  SecurityGroupDBInstance:
+  #    Type: AWS::EC2::SecurityGroup
+  #    Properties:
+  #      GroupDescription: 'My sql SG'
+  #      GroupName: dbSG
+  #      SecurityGroupIngress:
+  #        -
+  #
+  #  3306tcpSGIngress:
+  #    Type: AWS::EC2::SecurityGroupIngress
+  #    Properties:
+  #      FromPort: 3306
+  #      IpProtocol: tcp
+  #      ToPort: 3306
+  #      SourceSecurityGroupId: !GetAtt SecurityGroupDBInstance.GroupId
+  #      GroupName: !Ref SecurityGroupDBInstance
+
+  SecurityGroupWebDMZInstance:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: WebDMZ
+      GroupName: WebDMZ
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+          FromPort: 22
+          ToPort: 22
+
+
+  80tcpSGIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      FromPort: 80
+      IpProtocol: tcp
+      ToPort: 80
+      GroupName: !Ref SecurityGroupWebDMZInstance
+      SourceSecurityGroupId: !GetAtt SecurityGroupWebDMZInstance.GroupId
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-062f7200baf2fa504
+      InstanceType: t2.micro
+      InstanceInitiatedShutdownBehavior: stop
+      Tenancy: default
+      KeyName: ACloudGuru
+      SecurityGroups:
+        - !Ref SecurityGroupWebDMZInstance
+      UserData:
+        Fn::Base64:
+          Fn::Join:
+            - ""
+            - - "#!/bin/bash \n"
+              - "sudo su \n"
+              - "yum install httpd php php-mysql -y \n"
+              - "cd /var/www/html"
+              - "wget https://wordpress.org/wordpress-5.1.1.tar.gz \n"
+              - "tar -xzf wordpress-5.1.1.tar.gz \n"
+              - "cp -r wordpress/* /var/www/html/ \n"
+              - "rm -rf wordpress \n"
+              - "rm -rf wordpress-5.1.1.tar.gz \n"
+              - "chmod -R 755 wp-content \n"
+              - "chown -R apache:apache wp-content \n"
+              - "service httpd start \n"
+              - "chkconfig httpd on \n"
+      Tags:
+        - Key: Name
+          Value: Webserver
+        - Key: Department
+          Value: Developers
+        - Key: EmployeeId
+          Value: bhagatv1
+
+  EC2IamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Description: Allow EC2 instance to call AWS Services on your behalf
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+      RoleName: AdminAccess
+
+  MyInstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties:
+      Path: "/"
+      Roles:
+        - Ref: EC2IamRole
+      InstanceProfileName: "AdminAccess"
+
+# !GetAtt Endpoint.Address
+# !GetAtt Endpoint.Port
