@@ -17,7 +17,18 @@ Resources:
       VPCSecurityGroups:
         - !Ref SecurityGroupDBInstance
 
-
+  ReadReplicaDatabaseInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: acloudguru-read-replica
+      DBInstanceClass: db.t2.micro
+      SourceDBInstanceIdentifier: !Ref DatabaseInstance
+      PubliclyAccessible: false
+      MultiAZ: false
+      StorageEncrypted: false
+      Tags:
+        - Key: Name
+          Value: Read Replica Database
 
   SecurityGroupDBInstance:
     Type: AWS::EC2::SecurityGroup
