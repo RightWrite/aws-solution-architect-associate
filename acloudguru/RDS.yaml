@@ -1,63 +1,58 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: Create a stack named - AcloudGuruRDS for Acloudguru practice
 Resources:
-  #  RDS:
-  #    Type: "AWS::RDS::DBInstance"
-  #    Properties:
-  #      DBInstanceIdentifier: acloudguru
-  #      DBName: acloudguru
-  #      DBInstanceClass: db.t2.micro
-  #      AllocatedStorage: 5
-  #      MasterUsername: acloudguru
-  #      MasterUserPassword: acloudguru
-  #      Engine: MySQL
-  #      EngineVersion: 5.7.22
-  #      VPCSecurityGroups:
-  #        - !Ref SecurityGroupDBInstance
+  DatabaseInstance:
+    Type: "AWS::RDS::DBInstance"
+    Properties:
+      DBInstanceIdentifier: acloudguru
+      DBName: acloudguru
+      DBInstanceClass: db.t2.micro
+      AllocatedStorage: 5
+      MasterUsername: acloudguru
+      MasterUserPassword: acloudguru
+      Engine: MySQL
+      EngineVersion: 5.7.22
+      MultiAZ: true
+      BackupRetentionPeriod: 35
+      VPCSecurityGroups:
+        - !Ref SecurityGroupDBInstance
 
-  #  SecurityGroupDBInstance:
-  #    Type: 'AWS::EC2::SecurityGroup'
-  #    Properties:
-  #      GroupDescription: 'Allow http to client host'
-  ##      GroupName: 'mysecgrp'
-  #      SecurityGroupIngress:
-  #        - IpProtocol: tcp
-  #          FromPort: 3306
-  #          ToPort: 3306
-  #          CidrIp: 0.0.0.0/0
 
-  #  SecurityGroupDBInstance:
-  #    Type: AWS::EC2::SecurityGroup
-  #    Properties:
-  #      GroupDescription: WebDMZ
-  #      GroupName: WebDMZ
-  #      SecurityGroupIngress:
-  #        - IpProtocol: tcp
-  #          CidrIp: 0.0.0.0/0
-  #          FromPort: 22
-  #          ToPort: 22
-  #  SecurityGroupDBInstance:
-  #    Type: AWS::EC2::SecurityGroup
-  #    Properties:
-  #      GroupDescription: 'My sql SG'
-  #      GroupName: dbSG
-  #      SecurityGroupIngress:
-  #        -
-  #
-  #  3306tcpSGIngress:
-  #    Type: AWS::EC2::SecurityGroupIngress
-  #    Properties:
-  #      FromPort: 3306
-  #      IpProtocol: tcp
-  #      ToPort: 3306
-  #      SourceSecurityGroupId: !GetAtt SecurityGroupDBInstance.GroupId
-  #      GroupName: !Ref SecurityGroupDBInstance
 
-  SecurityGroupWebDMZInstance:
+  SecurityGroupDBInstance:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: WebDMZ
-      GroupName: WebDMZ
+      GroupDescription: for learning purpose
+      GroupName: ACloudGuruDBInstance
+      VpcId: vpc-0489ef7f
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+          FromPort: 22
+          ToPort: 22
+
+  # Rule to allow traffic from WordpressSG security group to ACloudGuruDBInstance
+  # so that traffic can flow from Web server to database
+  InboundRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      SourceSecurityGroupId:
+        Fn::GetAtt:
+          - SecurityGroupWordpressSGInstance
+          - GroupId
+      GroupId:
+        Fn::GetAtt:
+          - SecurityGroupDBInstance
+          - GroupId
+
+  SecurityGroupWordpressSGInstance:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: WordpressSG
+      GroupName: WordpressSG
       SecurityGroupIngress:
         - IpProtocol: tcp
           CidrIp: 0.0.0.0/0
@@ -71,8 +66,9 @@ Resources:
       FromPort: 80
       IpProtocol: tcp
       ToPort: 80
-      GroupName: !Ref SecurityGroupWebDMZInstance
-      SourceSecurityGroupId: !GetAtt SecurityGroupWebDMZInstance.GroupId
+      GroupName: !Ref SecurityGroupWordpressSGInstance
+      CidrIp: 0.0.0.0/0
+
 
   EC2Instance:
     Type: AWS::EC2::Instance
@@ -83,7 +79,7 @@ Resources:
       Tenancy: default
       KeyName: ACloudGuru
       SecurityGroups:
-        - !Ref SecurityGroupWebDMZInstance
+        - !Ref SecurityGroupWordpressSGInstance
       UserData:
         Fn::Base64:
           Fn::Join:
@@ -103,7 +99,7 @@ Resources:
               - "chkconfig httpd on \n"
       Tags:
         - Key: Name
-          Value: Webserver
+          Value: WordpressServer
         - Key: Department
           Value: Developers
         - Key: EmployeeId
